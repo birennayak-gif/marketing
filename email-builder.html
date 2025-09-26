@@ -94,7 +94,7 @@
         <!-- Rows -->
         <div id="rows_wrap"></div>
 
-        <!-- OUTPUT CONTROLS -->
+        <!-- OUTPUT CONTROLS (above preview) -->
         <div class="row-inline" style="margin-top:18px;margin-bottom:6px">
           <button class="btn ghost" id="gen">Generate</button>
           <button class="btn ghost" id="copy">Copy Final HTML</button>
@@ -283,9 +283,7 @@
       `;
       c.querySelector("[data-removecol]").onclick = ()=> { c.remove(); renumberColumns(rowEl); };
 
-      // text-mode toggling
       const typeSel = c.querySelector("[data-type]");
-      const fields   = c.querySelector("[data-fields]");
       const tSimple  = c.querySelector("[data-text-simple]");
       const tAdv     = c.querySelector("[data-text-advanced]");
       const tModeBar = c.querySelector("[data-text-mode]");
@@ -297,9 +295,6 @@
         tSimple.style.display  = isText ? "" : "none";
         tAdv.style.display     = isText ? "" : "none";
         tModeBar.style.display = isText ? "" : "none";
-        fields.style.display   = (t==="button") ? "none" : ""; // button uses value + href; hide img fields? we still need href field—keep fields visible
-        // Actually: keep fields visible for button (value CTA + href), but alt/width irrelevant
-        // So no change here beyond above line; fields already include value+href inputs.
       }
       setTypeUI();
       typeSel.onchange = setTypeUI;
@@ -315,10 +310,7 @@
       tModeBar.querySelector('[data-mode="simple"]').onclick = ()=>{ advMode=false; showMode(); };
       tModeBar.querySelector('[data-mode="advanced"]').onclick = ()=>{ advMode=true; showMode(); };
 
-      // editor toolbar
-      function surround(tag){
-        document.execCommand('formatBlock', false, tag);
-      }
+      function surround(tag){ document.execCommand('formatBlock', false, tag); }
       tAdv.querySelector('[data-cmd="bold"]').onclick = ()=> document.execCommand('bold', false);
       tAdv.querySelector('[data-cmd="italic"]').onclick = ()=> document.execCommand('italic', false);
       tAdv.querySelector('[data-cmd="underline"]').onclick = ()=> document.execCommand('underline', false);
@@ -361,7 +353,6 @@
       return out;
     }
 
-    // header/footer
     function headerHTML(utm, overrideColor){
       const bg = (overrideColor && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(overrideColor)) ? overrideColor : "#00C9A7";
       let html = '';
@@ -396,7 +387,6 @@
       return html;
     }
 
-    // content builders
     function buildCellHTML(col, utm){
       const wAttr = col.w ? ` width="${Number(col.w)||col.w}"` : "";
 
@@ -410,12 +400,10 @@
       }
 
       if(col.type==="text"){
-        // Prefer advanced HTML if present; else simple tag+value
         let inner = col.html && col.html.trim() ? col.html.trim() : esc(col.value||"");
         if(!col.html || !col.html.trim()){
           const tag = (col.textTag||"p").toLowerCase();
           const fam = col.fontfam ? ` font-family:${esc(col.fontfam)};` : "";
-          // Use inline styles for email-safe fonts; simple defaults
           const size = (tag==="h1")? "font-size:22px;line-height:28px;font-weight:700;"
                      : (tag==="h2")? "font-size:18px;line-height:24px;font-weight:700;"
                      : (tag==="h3")? "font-size:16px;line-height:22px;font-weight:700;"
@@ -472,7 +460,6 @@
       return html;
     }
 
-    // full html
     function readUTM(){
       return {
         utm_source: $("utm_source").value.trim(),
@@ -517,16 +504,11 @@
       return full;
     }
 
-    // actions
     function generate(){
       const html = buildFullHTML();
       $("out_html").value = html;
-
-      // update previews via srcdoc to avoid CSS/JS collisions
-      const d = $("preview_desktop");
-      const m = $("preview_mobile");
-      d.srcdoc = html;
-      m.srcdoc = html;
+      $("preview_desktop").srcdoc = html;
+      $("preview_mobile").srcdoc  = html;
     }
     $("gen").onclick = generate;
 
@@ -535,19 +517,14 @@
       const v = $("out_html").value;
       try{
         if(navigator.clipboard?.writeText){ await navigator.clipboard.writeText(v); }
-        else{
-          $("out_html").focus(); $("out_html").select();
-          document.execCommand("copy");
-        }
+        else{ $("out_html").focus(); $("out_html").select(); document.execCommand("copy"); }
         const b=$("copy"), t=b.textContent; b.textContent="Copied ✓"; setTimeout(()=>b.textContent=t,1200);
-      }catch(e){
-        alert("Copy failed. Please select the text and press Ctrl/Cmd+C.");
-      }
+      }catch(e){ alert("Copy failed. Please select the text and press Ctrl/Cmd+C."); }
     };
 
     $("download").onclick = ()=>{
       if(!$("out_html").value.trim()) generate();
-      const blob = new Blob([$ ("out_html").value], {type: "text/html;charset=utf-8"});
+      const blob = new Blob([$("out_html").value], {type: "text/html;charset=utf-8"}); /* <-- FIXED */
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = "netmeds-email.html";
