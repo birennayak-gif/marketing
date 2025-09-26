@@ -18,7 +18,6 @@
     .body{padding:16px}
     .muted{color:var(--muted);font-size:12px}
 
-    /* form controls */
     .grid{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)}
     .row-inline{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     label{display:block;font-size:12px;font-weight:600;color:#111;margin-bottom:6px}
@@ -26,36 +25,33 @@
       width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:14px/1.4 inherit
     }
     textarea{min-height:220px}
+
     .btn{appearance:none;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff;cursor:pointer;font-weight:700}
     .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
     .btn.ghost{background:#f8fafc}
     .btn.small{padding:6px 10px;font-size:12px}
 
-    /* builder UI */
     .row-card{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:#fff}
     .row-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:8px 10px;border-radius:10px;background:#f9fbfb;border:1px dashed rgba(0,201,167,.35)}
     .row-title{display:flex;align-items:center;gap:8px}
     .row-badge{background:var(--brand);color:#fff;padding:2px 8px;border-radius:999px;font-weight:700;font-size:12px}
+
     .cols{display:grid;gap:10px}
     .col-card{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fcfefd}
     .col-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .col-badge{background:#eafff9;color:#055e50;border:1px solid rgba(0,201,167,.35);padding:2px 8px;border-radius:999px;font-weight:700;font-size:12px}
 
-    /* tiny HTML editor for Text block */
-    .editor-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-    .editor-toolbar .btn{padding:6px 10px}
-    .editor-area{
-      border:1px solid var(--line);border-radius:10px;min-height:100px;padding:10px;background:#fff;outline:none
-    }
-
-    /* previews */
     .preview-wrap{display:grid;gap:12px;grid-template-columns:1fr 380px}
     .preview-card{background:#f8fafc;border:1px dashed var(--line);border-radius:12px;padding:10px}
     .preview-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
     .frame{width:100%;height:720px;border:0;background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
     .badge{font-size:12px;font-weight:700;color:#055e50;background:#eafff9;border:1px solid rgba(0,201,167,.35);border-radius:999px;padding:4px 8px}
 
-    @media (max-width:1000px){.preview-wrap{grid-template-columns:1fr}}
+    /* text editor (simple toggle; HTML mode uses a textarea) */
+    .text-mode{display:flex;gap:6px;align-items:center;margin-top:6px}
+    .html-wrap textarea{min-height:140px}
+
+    @media (max-width:900px){.grid{grid-template-columns:1fr} .preview-wrap{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -94,14 +90,14 @@
         <!-- Rows -->
         <div id="rows_wrap"></div>
 
-        <!-- OUTPUT CONTROLS (above preview) -->
+        <!-- OUTPUT CONTROLS (above Final HTML) -->
         <div class="row-inline" style="margin-top:18px;margin-bottom:6px">
           <button class="btn ghost" id="gen">Generate</button>
           <button class="btn ghost" id="copy">Copy Final HTML</button>
           <button class="btn primary" id="download">Download .html</button>
         </div>
 
-        <!-- OUTPUT + PREVIEWS -->
+        <!-- OUTPUT + PREVIEW -->
         <div style="margin-top:6px">
           <label><b>Final Email HTML</b></label>
           <textarea id="out_html" readonly></textarea>
@@ -112,19 +108,18 @@
                 <strong>Desktop Preview</strong>
                 <span class="badge">600px</span>
               </div>
-              <iframe id="preview_desktop" class="frame" title="Desktop preview"></iframe>
+              <iframe id="preview_desktop" class="frame" title="Desktop"></iframe>
             </div>
-
             <div class="preview-card">
               <div class="preview-title">
                 <strong>Mobile Preview</strong>
-                <span class="badge">~360–390px</span>
+                <span class="badge">~375px</span>
               </div>
-              <iframe id="preview_mobile" class="frame" title="Mobile preview" style="width:375px;margin:0 auto;display:block"></iframe>
+              <iframe id="preview_mobile" class="frame" title="Mobile" style="width:375px;margin:0 auto;display:block"></iframe>
             </div>
           </div>
 
-          <p class="muted" style="margin-top:6px">Tip: paste this full HTML into your ESP’s code editor, or use “Download .html”.</p>
+          <p class="muted" style="margin-top:6px">Tip: paste this full HTML into your ESP, or use “Download .html”.</p>
         </div>
 
       </div>
@@ -155,17 +150,14 @@
     }
 
     function renumberColumns(rowEl){
-      const cols = rowEl.querySelectorAll("[data-col]");
-      cols.forEach((c,idx)=>{
-        const badge = c.querySelector(".col-badge");
-        if(badge) badge.textContent = "Column " + (idx+1);
+      rowEl.querySelectorAll("[data-col]").forEach((c,i)=>{
+        const b = c.querySelector(".col-badge"); if(b) b.textContent = "Column " + (i+1);
       });
     }
 
     function addRow(){
       const r = document.createElement("div");
-      r.className = "row-card";
-      r.setAttribute("data-row","1");
+      r.className = "row-card"; r.setAttribute("data-row","1");
       r.innerHTML = `
         <div class="row-bar">
           <div class="row-title">
@@ -183,17 +175,16 @@
         </div>
         <div class="cols" data-cols></div>
       `;
-      r.querySelector("[data-addcol]").onclick = ()=> { addCol(r); renumberColumns(r); };
-      r.querySelector("[data-addrow]").onclick = ()=> { r.after(addRow()); };
-      r.querySelector("[data-removerow]").onclick = ()=> { r.remove(); };
+      r.querySelector("[data-addcol]").onclick = ()=>{ addCol(r); renumberColumns(r); };
+      r.querySelector("[data-addrow]").onclick = ()=> r.after(addRow());
+      r.querySelector("[data-removerow]").onclick = ()=> r.remove();
       rowsWrap.appendChild(r);
       return r;
     }
 
     function addCol(rowEl){
       const c = document.createElement("div");
-      c.className = "col-card";
-      c.setAttribute("data-col","1");
+      c.className = "col-card"; c.setAttribute("data-col","1");
       c.innerHTML = `
         <div class="col-title">
           <span class="col-badge">Column</span>
@@ -224,7 +215,8 @@
           </div>
         </div>
 
-        <div class="grid" data-fields style="margin-top:8px">
+        <!-- shared fields -->
+        <div class="grid" data-shared style="margin-top:8px">
           <div>
             <label>Value</label>
             <input data-value type="text" placeholder="Image/GIF: image URL · Button: CTA text · Text: content">
@@ -235,8 +227,14 @@
           </div>
         </div>
 
-        <!-- Text block extras -->
-        <div class="grid" data-text-simple style="margin-top:8px;display:none">
+        <!-- text options -->
+        <div class="text-mode" data-textbar style="display:none">
+          <span class="muted">Text mode:</span>
+          <button type="button" class="btn small" data-mode="simple">Simple H1/H2/H3/P</button>
+          <button type="button" class="btn small" data-mode="html">HTML</button>
+        </div>
+
+        <div class="grid" data-textsimple style="display:none">
           <div>
             <label>Text Type</label>
             <select data-texttag>
@@ -252,28 +250,9 @@
           </div>
         </div>
 
-        <div data-text-advanced style="display:none;margin-top:8px">
-          <label style="display:flex;align-items:center;gap:10px">
-            <span>HTML editor</span>
-            <span class="muted">Use toolbar or type HTML directly</span>
-          </label>
-          <div class="editor-toolbar">
-            <button type="button" class="btn small" data-cmd="bold"><b>B</b></button>
-            <button type="button" class="btn small" data-cmd="italic"><i>I</i></button>
-            <button type="button" class="btn small" data-cmd="underline"><u>U</u></button>
-            <button type="button" class="btn small" data-link>Add Link</button>
-            <button type="button" class="btn small" data-h1>H1</button>
-            <button type="button" class="btn small" data-h2>H2</button>
-            <button type="button" class="btn small" data-h3>H3</button>
-            <button type="button" class="btn small" data-p>P</button>
-          </div>
-          <div contenteditable="true" class="editor-area" data-editor></div>
-        </div>
-
-        <div class="row-inline" data-text-mode style="margin-top:6px;display:none">
-          <span class="muted">Text mode:</span>
-          <button type="button" class="btn small" data-mode="simple">Plain (H1/H2/H3/P)</button>
-          <button type="button" class="btn small" data-mode="advanced">HTML editor</button>
+        <div class="html-wrap" data-texthtml style="display:none">
+          <label>HTML content</label>
+          <textarea data-html placeholder="<p>Type HTML here…"></textarea>
         </div>
 
         <div class="grid" style="margin-top:8px">
@@ -281,47 +260,25 @@
           <div><label>Width (px, optional)</label><input data-w type="text" placeholder="e.g., 260"></div>
         </div>
       `;
-      c.querySelector("[data-removecol]").onclick = ()=> { c.remove(); renumberColumns(rowEl); };
+      c.querySelector("[data-removecol]").onclick = ()=>{ c.remove(); renumberColumns(rowEl); };
 
       const typeSel = c.querySelector("[data-type]");
-      const tSimple  = c.querySelector("[data-text-simple]");
-      const tAdv     = c.querySelector("[data-text-advanced]");
-      const tModeBar = c.querySelector("[data-text-mode]");
-      const editor   = c.querySelector("[data-editor]");
+      const bar = c.querySelector("[data-textbar]");
+      const simple = c.querySelector("[data-textsimple]");
+      const htmlWrap = c.querySelector("[data-texthtml]");
 
-      function setTypeUI(){
+      function updateTypeUI(){
         const t = typeSel.value;
-        const isText = (t==="text");
-        tSimple.style.display  = isText ? "" : "none";
-        tAdv.style.display     = isText ? "" : "none";
-        tModeBar.style.display = isText ? "" : "none";
+        const isText = t==="text";
+        bar.style.display = isText? "" : "none";
+        simple.style.display = isText? "" : "none";
+        htmlWrap.style.display = "none"; // default simple
       }
-      setTypeUI();
-      typeSel.onchange = setTypeUI;
+      updateTypeUI();
+      typeSel.onchange = updateTypeUI;
 
-      // default text mode = simple
-      let advMode = false;
-      function showMode(){
-        tSimple.style.display  = (!advMode) ? "" : "none";
-        tAdv.style.display     = (advMode) ? "" : "none";
-      }
-      showMode();
-
-      tModeBar.querySelector('[data-mode="simple"]').onclick = ()=>{ advMode=false; showMode(); };
-      tModeBar.querySelector('[data-mode="advanced"]').onclick = ()=>{ advMode=true; showMode(); };
-
-      function surround(tag){ document.execCommand('formatBlock', false, tag); }
-      tAdv.querySelector('[data-cmd="bold"]').onclick = ()=> document.execCommand('bold', false);
-      tAdv.querySelector('[data-cmd="italic"]').onclick = ()=> document.execCommand('italic', false);
-      tAdv.querySelector('[data-cmd="underline"]').onclick = ()=> document.execCommand('underline', false);
-      tAdv.querySelector('[data-h1]').onclick = ()=> surround('H1');
-      tAdv.querySelector('[data-h2]').onclick = ()=> surround('H2');
-      tAdv.querySelector('[data-h3]').onclick = ()=> surround('H3');
-      tAdv.querySelector('[data-p]').onclick  = ()=> surround('P');
-      tAdv.querySelector('[data-link]').onclick = ()=>{
-        const url = prompt("Enter URL");
-        if(url) document.execCommand('createLink', false, url);
-      };
+      bar.querySelector('[data-mode="simple"]').onclick = ()=>{ simple.style.display=""; htmlWrap.style.display="none"; };
+      bar.querySelector('[data-mode="html"]').onclick   = ()=>{ simple.style.display="none"; htmlWrap.style.display=""; };
 
       rowEl.querySelector("[data-cols]").appendChild(c);
     }
@@ -335,18 +292,18 @@
         const rowPad = (row.querySelector("[data-rowpad]")?.value || "").trim();
         const cols = [];
         row.querySelectorAll("[data-cols] > [data-col]").forEach(col=>{
-          const type = col.querySelector("[data-type]").value;
-          const align = (col.querySelector("[data-align]")?.value || "center").trim();
-          const pad   = (col.querySelector("[data-colpad]")?.value || "").trim();
-          const w     = (col.querySelector("[data-w]")?.value || "").trim();
-          const alt   = (col.querySelector("[data-alt]")?.value || "").trim();
-          const href  = (col.querySelector("[data-href]")?.value || "").trim();
-          let value   = (col.querySelector("[data-value]")?.value || "").trim();
-          let textTag = (col.querySelector("[data-texttag]")?.value || "p").trim();
-          let fontfam = (col.querySelector("[data-fontfam]")?.value || "").trim();
-          let html    = (col.querySelector("[data-editor]")?.innerHTML || "").trim();
-
-          cols.push({ type, align, pad, w, alt, href, value, textTag, fontfam, html });
+          cols.push({
+            type:  col.querySelector("[data-type]").value,
+            value: col.querySelector("[data-value]").value.trim(),
+            href:  col.querySelector("[data-href]").value.trim(),
+            alt:   col.querySelector("[data-alt]").value.trim(),
+            w:     col.querySelector("[data-w]").value.trim(),
+            pad:   (col.querySelector("[data-colpad]")?.value || "").trim(),
+            align: (col.querySelector("[data-align]")?.value || "center").trim(),
+            textTag: (col.querySelector("[data-texttag]")?.value || "p").trim(),
+            fontfam: (col.querySelector("[data-fontfam]")?.value || "").trim(),
+            html: (col.querySelector("[data-html]")?.value || "").trim()
+          });
         });
         out.push({ pad: rowPad, cols });
       });
@@ -400,17 +357,18 @@
       }
 
       if(col.type==="text"){
-        let inner = col.html && col.html.trim() ? col.html.trim() : esc(col.value||"");
-        if(!col.html || !col.html.trim()){
-          const tag = (col.textTag||"p").toLowerCase();
-          const fam = col.fontfam ? ` font-family:${esc(col.fontfam)};` : "";
-          const size = (tag==="h1")? "font-size:22px;line-height:28px;font-weight:700;"
-                     : (tag==="h2")? "font-size:18px;line-height:24px;font-weight:700;"
-                     : (tag==="h3")? "font-size:16px;line-height:22px;font-weight:700;"
-                     : "font-size:14px;line-height:20px;";
-          inner = `<${tag} style="margin:0;${size}${fam}">${inner}</${tag}>`;
+        // prefer HTML if provided; else wrap plain text in chosen tag
+        if(col.html){
+          return col.html;
         }
-        return inner;
+        const tag = (col.textTag||"p").toLowerCase();
+        const fam = col.fontfam ? ` font-family:${esc(col.fontfam)};` : "";
+        const size = (tag==="h1")? "font-size:22px;line-height:28px;font-weight:700;"
+                   : (tag==="h2")? "font-size:18px;line-height:24px;font-weight:700;"
+                   : (tag==="h3")? "font-size:16px;line-height:22px;font-weight:700;"
+                   : "font-size:14px;line-height:20px;";
+        const inner = esc(col.value||"");
+        return `<${tag} style="margin:0;${size}${fam}">${inner}</${tag}>`;
       }
 
       // image/gif
@@ -524,7 +482,7 @@
 
     $("download").onclick = ()=>{
       if(!$("out_html").value.trim()) generate();
-      const blob = new Blob([$("out_html").value], {type: "text/html;charset=utf-8"}); /* <-- FIXED */
+      const blob = new Blob([$("out_html").value], {type: "text/html;charset=utf-8"}); /* ← no stray space */
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url; a.download = "netmeds-email.html";
